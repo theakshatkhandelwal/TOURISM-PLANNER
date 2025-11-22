@@ -12,11 +12,13 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from public directory
-app.use(express.static('public'));
+// Use path.join for better compatibility
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Root route - serve the HTML file
 app.get('/', (req: Request, res: Response) => {
-  res.sendFile('index.html', { root: 'public' });
+  res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 // Initialize orchestrator and intent parser
