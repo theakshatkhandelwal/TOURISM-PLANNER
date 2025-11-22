@@ -1,0 +1,342 @@
+================================================================================
+                    MULTI-AGENT TOURISM SYSTEM
+                    Complete Project Explanation
+================================================================================
+
+WHAT THIS PROJECT DOES
+--------------------------------------------------------------------------------
+
+This is a web application that answers tourism questions in plain English. 
+Users can ask questions like:
+- "I'm going to Bangalore, what's the temperature there?"
+- "I'm going to Paris, let's plan my trip."
+- "I'm going to Tokyo, what's the weather and what places can I visit?"
+
+The system provides:
+- Current weather information (temperature and rain chance)
+- Tourist attractions (up to 5 places)
+- A readable response combining both
+
+
+HOW IT WORKS (BIG PICTURE)
+--------------------------------------------------------------------------------
+
+The system uses multiple "agents" (small programs) that work together:
+
+User asks a question
+    ↓
+Parent Agent (Orchestrator) receives it
+    ↓
+Orchestrator figures out what user wants
+    ↓
+Orchestrator asks Child Agents for help
+    ↓
+Child Agents fetch data from external APIs
+    ↓
+Orchestrator combines all the answers
+    ↓
+User gets a complete response
+
+
+PROJECT STRUCTURE (FILES AND FOLDERS)
+--------------------------------------------------------------------------------
+
+Main Folders:
+
+1. src/ - All the code
+   - services/ - The child agents
+   - types/ - Data structure definitions
+   - orchestrator.ts - The parent agent
+   - index.ts - The main server file
+
+2. public/ - The website frontend
+   - index.html - The user interface
+
+3. api/ - Vercel deployment helper
+   - index.js - Makes Express work on Vercel
+
+4. dist/ - Compiled JavaScript (created when you build)
+
+
+COMPONENTS EXPLAINED IN DETAIL
+--------------------------------------------------------------------------------
+
+1. PARENT AGENT (ORCHESTRATOR) - src/orchestrator.ts
+   
+   What it does:
+   - Receives user requests
+   - Coordinates the child agents
+   - Combines their results
+   - Formats the final response
+   
+   How it works:
+   1. User says: "I'm going to Bangalore, what's the weather?"
+   2. Orchestrator calls Geocoding Service: "Where is Bangalore?"
+   3. Gets coordinates: latitude 12.97, longitude 77.59
+   4. Orchestrator calls Weather Agent: "Get weather for these coordinates"
+   5. Weather Agent returns: "24°C, 35% rain chance"
+   6. Orchestrator formats: "In Bangalore it's currently 24°C with a chance of 35% to rain."
+   7. Sends response to user
+
+
+2. CHILD AGENT 1: WEATHER AGENT - src/services/weather.ts
+   
+   What it does:
+   - Gets current weather for a location
+   
+   How it works:
+   1. Receives latitude and longitude
+   2. Calls Open-Meteo API: https://api.open-meteo.com/v1/forecast
+   3. Gets temperature and precipitation probability
+   4. Returns formatted data
+   
+   Example API call:
+   GET https://api.open-meteo.com/v1/forecast?latitude=12.97&longitude=77.59&current=temperature_2m,precipitation_probability
+   
+   Response:
+   {
+     "current": {
+       "temperature_2m": 24.5,
+       "precipitation_probability": 35
+     }
+   }
+
+
+3. CHILD AGENT 2: PLACES AGENT - src/services/places.ts
+   
+   What it does:
+   - Finds tourist attractions near a location
+   
+   How it works:
+   1. Receives latitude and longitude
+   2. Builds an Overpass query (OpenStreetMap query language)
+   3. Calls Overpass API: https://overpass-api.de/api/interpreter
+   4. Searches for: tourism attractions, historic sites, museums, parks
+   5. Filters and deduplicates results
+   6. Returns up to 5 places
+   
+   Example query:
+   Find all nodes with tourism=* OR historic=* OR amenity=museum OR leisure=park
+   within 10km of coordinates (12.97, 77.59)
+
+
+4. GEOCODING SERVICE - src/services/geocode.ts
+   
+   What it does:
+   - Converts place names to coordinates
+   
+   How it works:
+   1. Receives place name (e.g., "Bangalore")
+   2. Calls Nominatim API: https://nominatim.openstreetmap.org/search
+   3. Gets latitude and longitude
+   4. Returns coordinates
+   
+   Example:
+   Input: "Bangalore"
+   Output: { latitude: 12.9716, longitude: 77.5946 }
+
+
+5. INTENT PARSER - src/services/intentParser.ts
+   
+   What it does:
+   - Understands what the user wants from their question
+   
+   How it works:
+   1. Reads the user's question
+   2. Extracts the place name
+   3. Detects intent (weather, places, or both)
+   4. Returns structured data
+   
+   Example:
+   Input: "I'm going to go to Bangalore, what is the temperature there"
+   Output: {
+     place: "Bangalore",
+     queryType: "weather"
+   }
+   
+   Detection logic:
+   - Weather keywords: "temperature", "weather", "rain", "hot", "cold"
+   - Places keywords: "places", "visit", "attractions", "plan my trip"
+   - If both present → "all"
+   - If neither → defaults to "places"
+
+
+6. MAIN SERVER - src/index.ts
+   
+   What it does:
+   - Creates the web server
+   - Handles HTTP requests
+   - Routes requests to the right handlers
+   
+   Endpoints:
+   1. GET /health - Health check
+   2. GET /plan?place=Bangalore&what=all - Traditional API
+   3. POST /query - Natural language API
+   4. GET / - Serves the web interface
+
+
+7. WEB INTERFACE - public/index.html
+   
+   What it does:
+   - Provides a user-friendly interface
+   
+   Features:
+   - Text input for natural language queries
+   - Example buttons
+   - Displays results
+   - Loading indicators
+
+
+COMPLETE REQUEST FLOW (EXAMPLE)
+--------------------------------------------------------------------------------
+
+User query: "I'm going to go to Bangalore, what is the temperature there? 
+And what are the places I can visit?"
+
+Step 1: User sends request
+POST /query
+Body: { "query": "I'm going to go to Bangalore..." }
+
+Step 2: Server receives request
+- src/index.ts receives the POST request
+- Extracts the query from the body
+
+Step 3: Intent parsing
+- IntentParser analyzes the query
+- Extracts: place = "Bangalore", queryType = "all"
+
+Step 4: Geocoding
+- GeocodeService calls Nominatim API
+- Gets: latitude 12.9716, longitude 77.5946
+
+Step 5: Parallel API calls
+Orchestrator calls both agents simultaneously:
+
+Weather Agent:
+- Calls Open-Meteo API
+- Gets: temperature 24°C, rain 35%
+
+Places Agent:
+- Calls Overpass API
+- Gets: ["Lalbagh", "Bangalore Palace", "Bannerghatta National Park", ...]
+
+Step 6: Combine results
+Orchestrator formats the response:
+"In Bangalore it's currently 24°C with a chance of 35% to rain. 
+And these are the places you can go:
+Lalbagh
+Bangalore Palace
+Bannerghatta National Park
+..."
+
+Step 7: Send response
+Server sends JSON response to user:
+{
+  "success": true,
+  "place": "Bangalore",
+  "message": "In Bangalore it's currently 24°C...",
+  "data": {
+    "weather": { "temperature": 24, "precipitationProbability": 35 },
+    "places": { "places": ["Lalbagh", "Bangalore Palace", ...] }
+  }
+}
+
+Step 8: Display to user
+Web interface shows the formatted message
+
+
+TECHNOLOGIES USED
+--------------------------------------------------------------------------------
+
+Backend:
+- Node.js - JavaScript runtime
+- TypeScript - Typed JavaScript
+- Express - Web framework
+
+APIs:
+- Open-Meteo - Weather data
+- Overpass - OpenStreetMap query API
+- Nominatim - Geocoding
+
+Deployment:
+- Vercel - Serverless hosting
+
+Testing:
+- Jest - Testing framework
+
+
+ERROR HANDLING
+--------------------------------------------------------------------------------
+
+Unknown Place:
+Input: "I'm going to NonExistentPlace123"
+Output: "I don't know this place exists"
+
+API Failures:
+- Retries up to 2 times
+- Returns partial results if one service fails
+- Timeouts: 10s for geocoding/weather, 30s for places
+
+Network Issues:
+- Automatic retries with delays
+- Graceful error messages
+
+
+DEPLOYMENT PROCESS
+--------------------------------------------------------------------------------
+
+Local Development:
+1. npm install - Install dependencies
+2. npm run build - Compile TypeScript
+3. npm start - Run server
+4. Visit http://localhost:3000
+
+Vercel Deployment:
+1. Push code to GitHub
+2. Connect repository on Vercel
+3. Vercel auto-detects settings
+4. Builds and deploys automatically
+5. App is live at https://your-app.vercel.app
+
+
+KEY FEATURES
+--------------------------------------------------------------------------------
+
+1. Natural Language Processing - Understands plain English
+2. Multi-Agent Architecture - Specialized agents work together
+3. Real-Time Data - Live weather and places
+4. Error Handling - Handles failures gracefully
+5. Web Interface - Easy to use
+6. API Endpoints - Can be used programmatically
+7. Serverless Deployment - Scales automatically
+
+
+WHY THIS ARCHITECTURE?
+--------------------------------------------------------------------------------
+
+- Separation of Concerns - Each agent has one job
+- Scalability - Agents can be improved independently
+- Maintainability - Easy to update or add features
+- Reliability - If one agent fails, others still work
+- Testability - Each component can be tested separately
+
+
+SUMMARY
+--------------------------------------------------------------------------------
+
+This project is a tourism assistant that:
+1. Understands natural language questions
+2. Finds locations using geocoding
+3. Gets weather data from weather APIs
+4. Finds tourist attractions from map data
+5. Combines everything into a readable response
+6. Works on the web and via API
+
+It demonstrates how multiple specialized services can work together to solve 
+a complex problem, with proper error handling, testing, and deployment.
+
+
+================================================================================
+                            END OF DOCUMENTATION
+================================================================================
+
