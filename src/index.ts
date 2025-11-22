@@ -120,9 +120,13 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Export app for Vercel serverless functions
-// Use module.exports for CommonJS compatibility with Vercel
+// Export as both default (ES modules) and CommonJS
+export default app;
+
+// Also export for CommonJS (Vercel compatibility)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = app;
+  module.exports.default = app;
 }
 
 // Start server only if not in Vercel environment

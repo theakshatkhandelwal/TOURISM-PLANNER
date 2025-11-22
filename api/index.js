@@ -2,13 +2,26 @@
 // This file handles all routes for Vercel serverless functions
 
 // Import the compiled Express app
-// The dist/index.js exports the app as default
+// Handle both CommonJS and ES module exports
 let app;
+
 try {
-  app = require('../dist/index').default;
-} catch (e) {
-  // Fallback if default export doesn't work
-  app = require('../dist/index');
+  const indexModule = require('../dist/index');
+  // Try default export first (ES modules)
+  app = indexModule.default || indexModule;
+  
+  // If still undefined, try direct require
+  if (!app) {
+    app = require('../dist/index');
+  }
+} catch (error) {
+  console.error('Error loading Express app:', error);
+  throw error;
+}
+
+// Ensure we have the app
+if (!app) {
+  throw new Error('Failed to load Express app from dist/index.js');
 }
 
 // Export the Express app for Vercel
