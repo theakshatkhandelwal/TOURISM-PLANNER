@@ -39,80 +39,91 @@ export class IntentParser {
   }
   
   private extractPlaceName(input: string, normalized: string): string {
-    // Common words to ignore (even if capitalized)
+    // Common words to ignore (case-insensitive)
     const ignoreWords = new Set([
-      'I', 'I\'m', 'I\'ve', 'Let', 'Let\'s', 'What', 'The', 'And', 'Are', 'Can', 'Is', 'There', 
-      'My', 'Trip', 'Plan', 'Going', 'To', 'Go', 'Temperature', 'Temp', 'Weather', 'Weather\'s',
-      'Of', 'In', 'At', 'For', 'From', 'With', 'Will', 'Want', 'Need', 'Show', 'Tell', 'Give',
-      'Get', 'Find', 'See', 'Visit', 'Travel', 'Going', 'Visit', 'See'
+      'i', 'i\'m', 'i\'ve', 'let', 'let\'s', 'what', 'the', 'and', 'are', 'can', 'is', 'there', 
+      'my', 'trip', 'plan', 'going', 'to', 'go', 'temperature', 'temp', 'weather', 'weather\'s',
+      'of', 'in', 'at', 'for', 'from', 'with', 'will', 'want', 'need', 'show', 'tell', 'give',
+      'get', 'find', 'see', 'visit', 'travel'
     ]);
     
-    // Pattern 1: "[Something] of [Place]" - e.g., "Temperature of Kolkata"
-    let match = input.match(/\b(\w+)\s+of\s+([A-Z][a-zA-Z\s]+?)(?:\s*[,\.\?]|$)/i);
+    // Helper function to capitalize first letter
+    const capitalize = (str: string): string => {
+      return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    };
+    
+    // Pattern 1: "[Something] of [Place]" - e.g., "Temperature of Kolkata" or "temperature of kolkata"
+    let match = input.match(/\b(\w+)\s+of\s+([a-zA-Z\s]+?)(?:\s*[,\.\?]|$)/i);
     if (match && match[2]) {
       let place = match[2].trim();
       place = place.replace(/[,\.\?]+$/, '').trim();
       // Remove trailing common words
       place = place.replace(/\s+(what|let|plan|my|trip|and|are|can|visit|go|is|the|there|temperature|places).*$/i, '').trim();
       if (place.length > 2) {
-        return place;
+        // Capitalize first letter of each word
+        return place.split(' ').map(w => capitalize(w)).join(' ');
       }
     }
     
-    // Pattern 2: "going to [Place]" or "going to go to [Place]"
-    match = input.match(/going\s+to\s+(?:go\s+to\s+)?([A-Z][a-zA-Z\s]+?)(?:\s*[,\.\?]|\s+let|$)/i);
-    if (match && match[1]) {
-      let place = match[1].trim();
-      place = place.replace(/[,\.\?]+$/, '').trim();
-      // Remove common trailing words
-      place = place.replace(/\s+(what|let|plan|my|trip|and|are|can|visit|go|is|the|there|temperature|places).*$/i, '').trim();
-      if (place.length > 2 && !ignoreWords.has(place.split(' ')[0])) {
-        return place;
-      }
-    }
-    
-    // Pattern 3: "I'm going to [Place]" or "I am going to [Place]"
-    match = input.match(/(?:I'?m|I\s+am)\s+going\s+to\s+(?:go\s+to\s+)?([A-Z][a-zA-Z\s]+?)(?:\s*[,\.\?]|\s+let|\s+what|$)/i);
+    // Pattern 2: "going to [Place]" or "going to go to [Place]" (case-insensitive)
+    match = input.match(/going\s+to\s+(?:go\s+to\s+)?([a-zA-Z\s]+?)(?:\s*[,\.\?]|\s+let|$)/i);
     if (match && match[1]) {
       let place = match[1].trim();
       place = place.replace(/[,\.\?]+$/, '').trim();
       place = place.replace(/\s+(what|let|plan|my|trip|and|are|can|visit|go|is|the|there|temperature|places).*$/i, '').trim();
-      if (place.length > 2 && !ignoreWords.has(place.split(' ')[0])) {
-        return place;
+      const firstWord = place.split(' ')[0].toLowerCase();
+      if (place.length > 2 && !ignoreWords.has(firstWord)) {
+        return place.split(' ').map(w => capitalize(w)).join(' ');
       }
     }
     
-    // Pattern 4: "in [Place]" or "at [Place]"
-    match = input.match(/(?:in|at)\s+([A-Z][a-zA-Z\s]+?)(?:\s*[,\.\?]|\s+it|$)/i);
+    // Pattern 3: "I'm going to [Place]" or "I am going to [Place]" (case-insensitive)
+    match = input.match(/(?:I'?m|I\s+am|i'?m|i\s+am)\s+going\s+to\s+(?:go\s+to\s+)?([a-zA-Z\s]+?)(?:\s*[,\.\?]|\s+let|\s+what|$)/i);
     if (match && match[1]) {
       let place = match[1].trim();
       place = place.replace(/[,\.\?]+$/, '').trim();
-      if (place.length > 2 && !ignoreWords.has(place.split(' ')[0])) {
-        return place;
+      place = place.replace(/\s+(what|let|plan|my|trip|and|are|can|visit|go|is|the|there|temperature|places).*$/i, '').trim();
+      const firstWord = place.split(' ')[0].toLowerCase();
+      if (place.length > 2 && !ignoreWords.has(firstWord)) {
+        return place.split(' ').map(w => capitalize(w)).join(' ');
       }
     }
     
-    // Pattern 5: Find capitalized words (place names are usually capitalized)
-    // But skip common words and prioritize words that look like place names
+    // Pattern 4: "in [Place]" or "at [Place]" (case-insensitive)
+    match = input.match(/(?:in|at)\s+([a-zA-Z\s]+?)(?:\s*[,\.\?]|\s+it|$)/i);
+    if (match && match[1]) {
+      let place = match[1].trim();
+      place = place.replace(/[,\.\?]+$/, '').trim();
+      const firstWord = place.split(' ')[0].toLowerCase();
+      if (place.length > 2 && !ignoreWords.has(firstWord)) {
+        return place.split(' ').map(w => capitalize(w)).join(' ');
+      }
+    }
+    
+    // Pattern 5: Find words that look like place names (case-insensitive)
+    // First try capitalized words, then try any word that's not a common word
     const words = input.split(/\s+/);
-    const capitalizedWords: string[] = [];
+    const placeWords: string[] = [];
     
+    // First pass: look for capitalized words
     for (let i = 0; i < words.length; i++) {
       const word = words[i].replace(/[,\.\?;:!]+$/, '');
+      const wordLower = word.toLowerCase();
       
       // Skip common words
-      if (ignoreWords.has(word)) {
+      if (ignoreWords.has(wordLower)) {
         continue;
       }
       
-      // Look for capitalized words that aren't common words
+      // Look for capitalized words
       if (word.length > 2 && /^[A-Z][a-z]+$/.test(word)) {
-        capitalizedWords.push(word);
+        placeWords.push(word);
         // Check if next word is also capitalized (multi-word place names like "New York")
         if (i + 1 < words.length) {
           const nextWord = words[i + 1].replace(/[,\.\?;:!]+$/, '');
-          if (/^[A-Z][a-z]+$/.test(nextWord) && !ignoreWords.has(nextWord)) {
-            capitalizedWords.push(nextWord);
+          const nextWordLower = nextWord.toLowerCase();
+          if (/^[A-Z][a-z]+$/.test(nextWord) && !ignoreWords.has(nextWordLower)) {
+            placeWords.push(nextWord);
             i++;
           }
         }
@@ -120,16 +131,41 @@ export class IntentParser {
       }
     }
     
-    if (capitalizedWords.length > 0) {
-      return capitalizedWords.join(' ');
+    // Second pass: if no capitalized words found, look for any word that's not common
+    if (placeWords.length === 0) {
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i].replace(/[,\.\?;:!]+$/, '');
+        const wordLower = word.toLowerCase();
+        
+        // Skip common words and very short words
+        if (ignoreWords.has(wordLower) || word.length < 3) {
+          continue;
+        }
+        
+        // Take the first word that looks like a place name
+        // (usually a proper noun or a word that's not a common English word)
+        if (/^[a-zA-Z]+$/.test(word) && word.length >= 3) {
+          placeWords.push(word);
+          break;
+        }
+      }
     }
     
-    // Last resort: return first capitalized word that's not a common word
-    const firstCap = words.find(w => {
+    if (placeWords.length > 0) {
+      // Capitalize first letter of each word
+      return placeWords.map(w => capitalize(w)).join(' ');
+    }
+    
+    // Last resort: return first word that's not a common word (case-insensitive)
+    for (const w of words) {
       const clean = w.replace(/[,\.\?;:!]+$/, '');
-      return /^[A-Z]/.test(clean) && !ignoreWords.has(clean);
-    });
-    return firstCap ? firstCap.replace(/[,\.\?;:!]+$/, '') : '';
+      const cleanLower = clean.toLowerCase();
+      if (clean.length >= 3 && /^[a-zA-Z]+$/.test(clean) && !ignoreWords.has(cleanLower)) {
+        return capitalize(clean);
+      }
+    }
+    
+    return '';
   }
   
   private hasWeatherKeywords(text: string): boolean {
