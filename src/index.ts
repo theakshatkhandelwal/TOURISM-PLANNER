@@ -10,7 +10,14 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from public directory
 app.use(express.static('public'));
+
+// Root route - serve the HTML file
+app.get('/', (req: Request, res: Response) => {
+  res.sendFile('index.html', { root: 'public' });
+});
 
 // Initialize orchestrator and intent parser
 const orchestrator = new TourismOrchestrator();
